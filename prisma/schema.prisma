@@ -140,3 +140,30 @@ model TrainHistory {
 
   changedAt  DateTime @default(now())
 }
+
+// ─── RESCUE TEAMS ─────────────────────────────────────────────────────────────
+
+/// A rescue team that can be dispatched to stranded trains.
+model RescueTeam {
+  id           String   @id @default(cuid())
+
+  /// Name of the rescue team (e.g., "Stuttgart Heavy Rescue Alpha").
+  name         String   @unique @db.VarChar(100)
+
+  /// Current base location of the team.
+  location     String   @db.VarChar(300)
+
+  /// Is the team currently available for dispatch?
+  isAvailable  Boolean  @default(true)
+
+  /// Number of members or personnel capacity.
+  capacity     Int?
+
+  /// Specialized equipment or capabilities (e.g., "Heavy Towing", "Cranes").
+  specialties  String?  @db.VarChar(500)
+
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([isAvailable])
+}

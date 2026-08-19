@@ -63,10 +63,30 @@ const validateChangePassword = [
   handleValidationErrors,
 ];
 
+const validateForgotPassword = [
+  body('email')
+    .notEmpty().withMessage('Email is required')
+    .isEmail().withMessage('Please provide a valid email address')
+    .normalizeEmail(),
+  handleValidationErrors,
+];
+
+const validateResetPassword = [
+  body('token')
+    .notEmpty().withMessage('Reset token is required')
+    .isString(),
+  body('newPassword')
+    .notEmpty().withMessage('New password is required')
+    .isLength({ min: 8 }).withMessage('New password must be at least 8 characters long'),
+  handleValidationErrors,
+];
+
 module.exports = {
   validateRegister,
   validateLogin,
   validateRefresh,
   validateUpdateMe,
   validateChangePassword,
+  validateForgotPassword,
+  validateResetPassword,
 };

@@ -10,6 +10,8 @@ const {
   validateRefresh,
   validateUpdateMe,
   validateChangePassword,
+  validateForgotPassword,
+  validateResetPassword,
 } = require('../middleware/validateAuth');
 
 // Optional: Add rate limiting to auth routes to prevent brute-force attacks
@@ -27,6 +29,8 @@ router.use(authLimiter);
 router.post('/register', validateRegister, ctrl.register);
 router.post('/login', validateLogin, ctrl.login);
 router.post('/refresh', validateRefresh, ctrl.refresh);
+router.post('/forgot-password', validateForgotPassword, ctrl.forgotPassword);
+router.post('/reset-password', validateResetPassword, ctrl.resetPassword);
 
 // ─── PROTECTED ROUTES ─────────────────────────────────────────────────────────
 

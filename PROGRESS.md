@@ -36,7 +36,7 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 | 2 | 🚂 Train Request Management | ✅ Done | 10/10 |
 | 3 | 👤 Authentication & Authorization | ✅ Done | 8/8 |
 | 4 | 👥 User Management | ✅ Done | 6/6 |
-| 5 | 🛠️ Rescue Team Management | ⬜ Not Started | 0/7 |
+| 5 | 🛠️ Rescue Team Management | ✅ Done | 7/7 |
 | 6 | 📋 Assignment & Dispatch | ⬜ Not Started | 0/5 |
 | 7 | 🔔 Notifications | ⬜ Not Started | 0/4 |
 | 8 | 📊 Reports & Dashboard | ⬜ Not Started | 0/5 |
@@ -105,7 +105,7 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 - [x] JWT access token generation & verification
 - [x] Refresh token support
 - [x] Auth middleware (`requireAuth`, `requireRole`)
-- [ ] Password reset flow
+- [x] Password reset flow
 - [x] Rate limiting on auth endpoints
 - [x] Prisma migration for User table
 
@@ -114,8 +114,8 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 - [x] `POST /api/auth/login` — Login and receive JWT tokens
 - [x] `POST /api/auth/logout` — Invalidate refresh token
 - [x] `POST /api/auth/refresh` — Exchange refresh token for new access token
-- [ ] `POST /api/auth/forgot-password` — Request a password reset email
-- [ ] `POST /api/auth/reset-password` — Reset password using token
+- [x] `POST /api/auth/forgot-password` — Request a password reset email
+- [x] `POST /api/auth/reset-password` — Reset password using token
 - [x] `GET  /api/auth/me` — Get current authenticated user profile
 - [x] `PATCH /api/auth/me` — Update own profile / change password
 
@@ -146,18 +146,18 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 > Coordinators manage rescue teams and their availability.
 
 ### Components
-- [ ] `RescueTeam` Prisma model (name, members, availability, location)
-- [ ] Team availability status tracking
-- [ ] Team capacity / specialisation fields
+- [x] `RescueTeam` Prisma model (name, members, availability, location)
+- [x] Team availability status tracking
+- [x] Team capacity / specialisation fields
 
 ### APIs
-- [ ] `POST   /api/rescue-teams` — Create a rescue team
-- [ ] `GET    /api/rescue-teams` — List all rescue teams *(filter: `?available=true`)*
-- [ ] `GET    /api/rescue-teams/:id` — Get team details
-- [ ] `PATCH  /api/rescue-teams/:id` — Update team info
-- [ ] `PATCH  /api/rescue-teams/:id/availability` — Toggle team availability
-- [ ] `DELETE /api/rescue-teams/:id` — Remove a team
-- [ ] `GET    /api/rescue-teams/:id/assignments` — Get assignments for a team
+- [x] `POST   /api/rescue-teams` — Create a rescue team
+- [x] `GET    /api/rescue-teams` — List all rescue teams *(filter: `?available=true`)*
+- [x] `GET    /api/rescue-teams/:id` — Get team details
+- [x] `PATCH  /api/rescue-teams/:id` — Update team info
+- [x] `PATCH  /api/rescue-teams/:id/availability` — Toggle team availability
+- [x] `DELETE /api/rescue-teams/:id` — Remove a team
+- [x] `GET    /api/rescue-teams/:id/assignments` — Get assignments for a team
 
 ---
 
@@ -222,7 +222,7 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 | ✅ M1 — Project scaffold & Infrastructure | Week 1 | Done |
 | ✅ M2 — Train Request Management (full) | Week 1 | Done |
 | ✅ M3 — Auth & User Management | Week 2 | Done |
-| ⬜ M4 — Rescue Teams & Assignment | Week 3 | Not Started |
+| ✅ M4 — Rescue Teams & Assignment | Week 3 | Done |
 | ⬜ M5 — Notifications | Week 4 | Not Started |
 | ⬜ M6 — Reports & Dashboard | Week 5 | Not Started |
 | ⬜ M7 — QA, Security Hardening & Deployment | Week 6 | Not Started |

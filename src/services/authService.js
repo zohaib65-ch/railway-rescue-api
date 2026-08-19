@@ -218,6 +218,72 @@ async function changePassword(userId, { currentPassword, newPassword }) {
   });
 }
 
+/**
+ * Initiates the password reset flow.
+ * Generates a reset token, saves it with an expiry, and would normally send an email.
+ */
+const crypto = require('crypto');
+
+async function forgotPassword({ email }) {
+  const user = await prisma.user.findUnique({ where: { email: email.toLowerCase() } });
+  
+  // We return a generic message even if the user isn't found to prevent email enumeration
+  if (!user || !user.isActive) {
+    return;
+  }
+
+  // Generate a random 64-character hex token
+  const resetToken = crypto.randomBytes(32).toString('hex');
+  
+  // Hash the token before storing it in the DB (similar to password/refresh token)
+  const resetTokenHash = crypto.createHash('sha256').update(resetToken).digest('hex');
+  
+  // Set expiry for 1 hour from now
+  const resetTokenExpiry = new Date(Date.now() + 60 * 60 * 1000);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { resetToken: resetTokenHash, resetTokenExpiry },
+  });
+
+  // TODO: Send email with the unhashed resetToken (e.g., https://frontend.com/reset-password?token=...)
+  // For now, we will just log it in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log(`[DEV] Password reset token for ${user.email}: ${resetToken}`);
+  }
+}
+
+/**
+ * Completes the password reset flow.
+ * Verifies the token, ensures it hasn't expired, and updates the password.
+ */
+async function resetPassword({ token, newPassword }) {
+  const resetTokenHash = crypto.createHash('sha256').update(token).digest('hex');
+
+  const user = await prisma.user.findFirst({
+    where: {
+      resetToken: resetTokenHash,
+      resetTokenExpiry: { gt: new Date() }, // ensure it hasn't expired
+    },
+  });
+
+  if (!user) {
+    throw new AppError('Token is invalid or has expired.', 400, 'INVALID_TOKEN');
+  }
+
+  const passwordHash = await bcrypt.hash(newPassword, 12);
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      passwordHash,
+      resetToken: null,
+      resetTokenExpiry: null,
+      refreshToken: null, // invalidate existing sessions
+    },
+  });
+}
+
 // ─── EXPORTS ─────────────────────────────────────────────────────────────────
 
 module.exports = {
@@ -228,6 +294,8 @@ module.exports = {
   getMe,
   updateMe,
   changePassword,
+  forgotPassword,
+  resetPassword,
   AppError,
   safeUser,
 };

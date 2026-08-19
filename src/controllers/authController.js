@@ -85,6 +85,31 @@ async function changePassword(req, res, next) {
   } catch (err) { next(err); }
 }
 
+/**
+ * POST /api/auth/forgot-password
+ * Public endpoint. Initiates password reset.
+ */
+async function forgotPassword(req, res, next) {
+  try {
+    const { email } = req.body;
+    await authService.forgotPassword({ email });
+    // Always return success even if user not found to prevent email enumeration
+    return sendSuccess(res, 200, 'If an account with that email exists, a password reset link has been sent.');
+  } catch (err) { next(err); }
+}
+
+/**
+ * POST /api/auth/reset-password
+ * Public endpoint. Completes password reset.
+ */
+async function resetPassword(req, res, next) {
+  try {
+    const { token, newPassword } = req.body;
+    await authService.resetPassword({ token, newPassword });
+    return sendSuccess(res, 200, 'Password has been reset successfully. You can now log in.');
+  } catch (err) { next(err); }
+}
+
 module.exports = {
   register,
   login,
@@ -93,4 +118,6 @@ module.exports = {
   getMe,
   updateMe,
   changePassword,
+  forgotPassword,
+  resetPassword,
 };

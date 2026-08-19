@@ -20,9 +20,11 @@ router.get('/health', (req, res) => {
 // ─── API V1 ───────────────────────────────────────────────────────────────────
 
 const userRoutes = require('./userRoutes');
+const rescueTeamRoutes = require('./rescueTeamRoutes');
 
 router.use('/api/auth', authRoutes);
 router.use('/api/users', userRoutes);
+router.use('/api/rescue-teams', rescueTeamRoutes);
 router.use('/api/trains', trainRoutes);
 
 // ─── 404 FALLBACK ─────────────────────────────────────────────────────────────
