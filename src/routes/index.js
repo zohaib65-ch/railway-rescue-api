@@ -19,7 +19,10 @@ router.get('/health', (req, res) => {
 
 // ─── API V1 ───────────────────────────────────────────────────────────────────
 
+const userRoutes = require('./userRoutes');
+
 router.use('/api/auth', authRoutes);
+router.use('/api/users', userRoutes);
 router.use('/api/trains', trainRoutes);
 
 // ─── 404 FALLBACK ─────────────────────────────────────────────────────────────

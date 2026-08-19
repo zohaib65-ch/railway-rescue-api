@@ -35,7 +35,7 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 | 1 | 🏗️ Project Setup & Infrastructure | ✅ Done | 6/6 |
 | 2 | 🚂 Train Request Management | ✅ Done | 10/10 |
 | 3 | 👤 Authentication & Authorization | ✅ Done | 8/8 |
-| 4 | 👥 User Management | ⬜ Not Started | 0/6 |
+| 4 | 👥 User Management | ✅ Done | 6/6 |
 | 5 | 🛠️ Rescue Team Management | ⬜ Not Started | 0/7 |
 | 6 | 📋 Assignment & Dispatch | ⬜ Not Started | 0/5 |
 | 7 | 🔔 Notifications | ⬜ Not Started | 0/4 |
@@ -126,18 +126,18 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 > Admin-only module to manage platform users.
 
 ### Components
-- [ ] Admin-only route guard middleware
-- [ ] User listing with filters and pagination
-- [ ] User deactivation / reactivation logic
-- [ ] Role assignment
+- [x] Admin-only route guard middleware
+- [x] User listing with filters and pagination
+- [x] User deactivation / reactivation logic
+- [x] Role assignment
 
 ### APIs
-- [ ] `GET    /api/users` — List all users *(admin only, filter: `?role=&status=`)*
-- [ ] `GET    /api/users/:id` — Get user details
-- [ ] `PATCH  /api/users/:id` — Update user info / role
-- [ ] `PATCH  /api/users/:id/deactivate` — Deactivate a user account
-- [ ] `PATCH  /api/users/:id/activate` — Reactivate a user account
-- [ ] `DELETE /api/users/:id` — Permanently remove a user
+- [x] `GET    /api/users` — List all users *(admin only, filter: `?role=&status=`)*
+- [x] `GET    /api/users/:id` — Get user details
+- [x] `PATCH  /api/users/:id` — Update user info / role
+- [x] `PATCH  /api/users/:id/deactivate` — Deactivate a user account
+- [x] `PATCH  /api/users/:id/activate` — Reactivate a user account
+- [x] `DELETE /api/users/:id` — Permanently remove a user
 
 ---
 
