@@ -1,0 +1,33 @@
+{
+  "name": "railway-rescue-api",
+  "version": "1.0.0",
+  "description": "REST API for the Railway Rescue platform — manages train rescue requests with server-side validation",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "db:migrate": "prisma migrate dev",
+    "db:generate": "prisma generate",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset",
+    "db:seed": "node prisma/seed.js"
+  },
+  "keywords": ["railway", "rescue", "api", "express", "prisma", "postgresql"],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^5.17.0",
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^5.0.1",
+    "express-rate-limit": "^7.4.0",
+    "express-validator": "^7.2.0",
+    "jsonwebtoken": "^9.0.2",
+    "morgan": "^1.10.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4",
+    "prisma": "^5.17.0"
+  }
+}

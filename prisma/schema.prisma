@@ -1,0 +1,142 @@
+// This is your Prisma schema file
+// Docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── ENUMS ────────────────────────────────────────────────────────────────────
+
+enum MovementType {
+  standard
+  LZ
+  other
+}
+
+enum TrainStatus {
+  active
+  completed
+  cancelled
+}
+
+/// Platform roles — determines what each user is allowed to do.
+///
+///  customer    → self-registers; can publish and view their own train requests
+///  coordinator → created by admin; can manage all trains and dispatch teams
+///  admin       → full platform access including user management
+enum Role {
+  customer
+  coordinator
+  admin
+}
+
+// ─── MODELS ───────────────────────────────────────────────────────────────────
+
+/// Platform user account.
+model User {
+  id               String    @id @default(cuid())
+
+  /// Full display name.
+  name             String    @db.VarChar(100)
+
+  /// Unique login email.
+  email            String    @unique @db.VarChar(200)
+
+  /// Bcrypt hash of the user's password — never store plain text.
+  passwordHash     String
+
+  /// Role that controls what the user can access.
+  role             Role      @default(customer)
+
+  /// Whether the account is active. Deactivated users cannot log in.
+  isActive         Boolean   @default(true)
+
+  /// Bcrypt-hashed refresh token stored server-side for validation & revocation.
+  refreshToken     String?
+
+  /// One-time token for password reset flow.
+  resetToken       String?
+
+  /// Expiry timestamp for the reset token.
+  resetTokenExpiry DateTime?
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  /// Train requests published by this user.
+  trains           Train[]
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+}
+
+/// A train rescue request published by an operator.
+model Train {
+  id           String       @id @default(cuid())
+
+  /// Numeric train number — max 6 digits (1–999,999).
+  /// Must be unique among all trains with status = active.
+  trainNumber  Int
+
+  /// Movement type of the train — kept separate from trainNumber per spec.
+  movementType MovementType @default(standard)
+
+  /// Lifecycle status of the rescue request.
+  status       TrainStatus  @default(active)
+
+  /// Free-text description of the rescue situation.
+  description  String?      @db.VarChar(1000)
+
+  /// Contact information of the operator publishing the request.
+  contactInfo  String?      @db.VarChar(200)
+
+  /// Location where the train is stranded or in need of rescue.
+  location     String?      @db.VarChar(300)
+
+  /// Timestamp when the request was resolved (completed or cancelled).
+  resolvedAt   DateTime?
+
+  /// Soft-delete timestamp. When set, the record is hidden from normal queries.
+  deletedAt    DateTime?
+
+  /// The user who published this request (null if created before auth was added).
+  publishedById String?
+  publishedBy   User?        @relation(fields: [publishedById], references: [id], onDelete: SetNull)
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  /// Audit trail of all status changes on this request.
+  history      TrainHistory[]
+
+  @@index([status])
+  @@index([trainNumber])
+  @@index([createdAt(sort: Desc)])
+  @@index([deletedAt])
+  @@index([publishedById])
+}
+
+/// Immutable audit log entry recording a status change on a Train request.
+model TrainHistory {
+  id         String   @id @default(cuid())
+
+  trainId    String
+  train      Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
+
+  /// The status before the change (null when first created).
+  fromStatus String?
+
+  /// The status after the change.
+  toStatus   String
+
+  /// Optional notes recorded at the time of the change.
+  notes      String?  @db.VarChar(500)
+
+  changedAt  DateTime @default(now())
+}
