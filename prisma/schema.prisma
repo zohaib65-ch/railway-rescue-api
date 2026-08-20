@@ -71,6 +71,9 @@ model User {
   /// Train requests published by this user.
   trains           Train[]
 
+  /// Notifications received by this user.
+  notifications    Notification[]
+
   @@index([email])
   @@index([role])
   @@index([isActive])
@@ -114,6 +117,9 @@ model Train {
 
   /// Audit trail of all status changes on this request.
   history      TrainHistory[]
+
+  /// Assignments of rescue teams to this train.
+  assignments  Assignment[]
 
   @@index([status])
   @@index([trainNumber])
@@ -165,5 +171,72 @@ model RescueTeam {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  /// Assignments this team is involved in.
+  assignments  Assignment[]
+
   @@index([isAvailable])
+}
+
+// ─── ASSIGNMENTS ──────────────────────────────────────────────────────────────
+
+enum AssignmentStatus {
+  assigned
+  en_route
+  on_site
+  resolved
+  cancelled
+}
+
+/// Represents the dispatch of a rescue team to a stranded train.
+model Assignment {
+  id             String           @id @default(cuid())
+
+  /// The stranded train being rescued.
+  trainId        String
+  train          Train            @relation(fields: [trainId], references: [id], onDelete: Cascade)
+
+  /// The rescue team dispatched.
+  rescueTeamId   String
+  rescueTeam     RescueTeam       @relation(fields: [rescueTeamId], references: [id], onDelete: Cascade)
+
+  /// Current status of this dispatch assignment.
+  status         AssignmentStatus @default(assigned)
+
+  /// Optional notes from the coordinator or rescue team.
+  notes          String?          @db.VarChar(1000)
+
+  assignedAt     DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  @@index([trainId])
+  @@index([rescueTeamId])
+  @@index([status])
+}
+
+// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+
+/// In-app notifications for users regarding their train requests or assignments.
+model Notification {
+  id         String   @id @default(cuid())
+
+  /// User who will receive the notification.
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  /// Title of the notification.
+  title      String   @db.VarChar(100)
+
+  /// Detailed message body.
+  message    String   @db.VarChar(500)
+
+  /// Has the user read this notification?
+  isRead     Boolean  @default(false)
+
+  /// Optional link to the relevant resource (e.g., "/trains/123").
+  link       String?  @db.VarChar(200)
+
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
 }

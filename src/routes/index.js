@@ -21,10 +21,16 @@ router.get('/health', (req, res) => {
 
 const userRoutes = require('./userRoutes');
 const rescueTeamRoutes = require('./rescueTeamRoutes');
+const assignmentRoutes = require('./assignmentRoutes');
+const notificationRoutes = require('./notificationRoutes');
+const reportRoutes = require('./reportRoutes');
 
 router.use('/api/auth', authRoutes);
 router.use('/api/users', userRoutes);
 router.use('/api/rescue-teams', rescueTeamRoutes);
+router.use('/api/assignments', assignmentRoutes);
+router.use('/api/notifications', notificationRoutes);
+router.use('/api/reports', reportRoutes);
 router.use('/api/trains', trainRoutes);
 
 // ─── 404 FALLBACK ─────────────────────────────────────────────────────────────

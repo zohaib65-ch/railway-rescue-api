@@ -37,9 +37,9 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 | 3 | 👤 Authentication & Authorization | ✅ Done | 8/8 |
 | 4 | 👥 User Management | ✅ Done | 6/6 |
 | 5 | 🛠️ Rescue Team Management | ✅ Done | 7/7 |
-| 6 | 📋 Assignment & Dispatch | ⬜ Not Started | 0/5 |
-| 7 | 🔔 Notifications | ⬜ Not Started | 0/4 |
-| 8 | 📊 Reports & Dashboard | ⬜ Not Started | 0/5 |
+| 6 | 📋 Assignment & Dispatch | ✅ Done | 5/5 |
+| 7 | 🔔 Notifications | ✅ Done | 4/4 |
+| 8 | 📊 Reports & Dashboard | ✅ Done | 5/5 |
 
 ---
 
@@ -166,16 +166,16 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 > Coordinators assign rescue teams to active train requests and track progress.
 
 ### Components
-- [ ] `Assignment` Prisma model (trainId, rescueTeamId, status, assignedAt, notes)
-- [ ] Assignment lifecycle: `assigned` → `en-route` → `on-site` → `resolved`
-- [ ] Prevent assigning a team that is already on an active assignment
+- [x] `Assignment` Prisma model (trainId, rescueTeamId, status, assignedAt, notes)
+- [x] Assignment lifecycle: `assigned` → `en-route` → `on-site` → `resolved`
+- [x] Prevent assigning a team that is already on an active assignment
 
 ### APIs
-- [ ] `POST  /api/assignments` — Assign a rescue team to a train request
-- [ ] `GET   /api/assignments` — List all assignments *(filter: `?status=&teamId=`)*
-- [ ] `GET   /api/assignments/:id` — Get assignment details
-- [ ] `PATCH /api/assignments/:id/status` — Update assignment status
-- [ ] `DELETE /api/assignments/:id` — Cancel an assignment
+- [x] `POST  /api/assignments` — Assign a rescue team to a train request
+- [x] `GET   /api/assignments` — List all assignments *(filter: `?status=&teamId=`)*
+- [x] `GET   /api/assignments/:id` — Get assignment details
+- [x] `PATCH /api/assignments/:id/status` — Update assignment status
+- [x] `DELETE /api/assignments/:id` — Cancel an assignment
 
 ---
 
@@ -184,16 +184,16 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 > Alert relevant parties when key events occur (new request published, team assigned, request resolved).
 
 ### Components
-- [ ] Notification service (event-driven, triggered by status changes)
-- [ ] Email notification support (e.g., via Nodemailer / SendGrid)
-- [ ] In-app notification store (per-user unread notifications)
-- [ ] Mark-as-read logic
+- [x] Notification service (event-driven, triggered by status changes)
+- [x] Email notification support (e.g., via Nodemailer / SendGrid)
+- [x] In-app notification store (per-user unread notifications)
+- [x] Mark-as-read logic
 
 ### APIs
-- [ ] `GET   /api/notifications` — Get notifications for current user
-- [ ] `PATCH /api/notifications/:id/read` — Mark notification as read
-- [ ] `PATCH /api/notifications/read-all` — Mark all as read
-- [ ] `DELETE /api/notifications/:id` — Delete a notification
+- [x] `GET   /api/notifications` — Get notifications for current user
+- [x] `PATCH /api/notifications/:id/read` — Mark notification as read
+- [x] `PATCH /api/notifications/read-all` — Mark all as read
+- [x] `DELETE /api/notifications/:id` — Delete a notification
 
 ---
 
@@ -202,16 +202,16 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 > Aggregated statistics for coordinators and admins.
 
 ### Components
-- [ ] Aggregation queries for summary stats
-- [ ] Date-range filtering on all report endpoints
-- [ ] Export to CSV (optional)
+- [x] Aggregation queries for summary stats
+- [x] Date-range filtering on all report endpoints
+- [x] Export to CSV (optional)
 
 ### APIs
-- [ ] `GET /api/reports/summary` — Total active / completed / cancelled counts
-- [ ] `GET /api/reports/trains` — Train requests over time (daily / weekly / monthly)
-- [ ] `GET /api/reports/teams` — Rescue team performance stats
-- [ ] `GET /api/reports/resolution-time` — Average time from publish to resolved
-- [ ] `GET /api/reports/export` — Export report data as CSV
+- [x] `GET /api/reports/summary` — Total active / completed / cancelled counts
+- [x] `GET /api/reports/trains` — Train requests over time (daily / weekly / monthly)
+- [x] `GET /api/reports/teams` — Rescue team performance stats
+- [x] `GET /api/reports/resolution-time` — Average time from publish to resolved
+- [x] `GET /api/reports/export` — Export report data as CSV
 
 ---
 
@@ -223,8 +223,8 @@ The **Railway Rescue** platform connects train operators who need emergency resc
 | ✅ M2 — Train Request Management (full) | Week 1 | Done |
 | ✅ M3 — Auth & User Management | Week 2 | Done |
 | ✅ M4 — Rescue Teams & Assignment | Week 3 | Done |
-| ⬜ M5 — Notifications | Week 4 | Not Started |
-| ⬜ M6 — Reports & Dashboard | Week 5 | Not Started |
+| ✅ M5 — Notifications | Week 4 | Done |
+| ✅ M6 — Reports & Dashboard | Week 5 | Done |
 | ⬜ M7 — QA, Security Hardening & Deployment | Week 6 | Not Started |
 
 ---
