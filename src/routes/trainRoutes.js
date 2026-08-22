@@ -3,50 +3,27 @@
 const express = require('express');
 const router  = express.Router();
 const ctrl    = require('../controllers/trainController');
-const {
-  validateCreateTrain,
-  validateUpdateTrain,
-  validateUpdateStatus,
-  validateListQuery,
-  validateSearchQuery,
-  validateId,
-} = require('../middleware/validateTrain');
-
-// ─── STATIC / NON-PARAM ROUTES (must come before /:id) ───────────────────────
-
-/** GET /api/trains/active  — active requests only */
-router.get('/active', ctrl.getActiveTrains);
-
-/** GET /api/trains/stats   — aggregated counts */
-router.get('/stats', ctrl.getTrainStats);
-
-/** GET /api/trains/search?q=... — full-text search */
-router.get('/search', validateSearchQuery, ctrl.searchTrains);
+const { protect } = require('../middleware/authMiddleware');
+const updateRoutes = require('./updateRoutes');
 
 // ─── COLLECTION ROUTES ────────────────────────────────────────────────────────
 
 router
   .route('/')
-  /** GET /api/trains  — paginated list with filters */
-  .get(validateListQuery, ctrl.getAllTrains)
-  /** POST /api/trains — publish new rescue request */
-  .post(validateCreateTrain, ctrl.createTrain);
+  .get(ctrl.getAllTrains)
+  .post(protect, ctrl.createTrain);
 
 // ─── SINGLE RESOURCE ROUTES ───────────────────────────────────────────────────
 
 router
   .route('/:id')
-  /** GET    /api/trains/:id — fetch one request (includes history) */
-  .get(validateId, ctrl.getTrainById)
-  /** PATCH  /api/trains/:id — edit mutable fields */
-  .patch(validateUpdateTrain, ctrl.updateTrain)
-  /** DELETE /api/trains/:id — soft-delete */
-  .delete(validateId, ctrl.deleteTrain);
+  .get(ctrl.getTrainById);
 
-/** GET   /api/trains/:id/history — full audit trail */
-router.get('/:id/history', validateId, ctrl.getTrainHistory);
+// ─── LOCKING ──────────────────────────────────────────────────────────────────
 
-/** PATCH /api/trains/:id/status  — complete or cancel */
-router.patch('/:id/status', validateUpdateStatus, ctrl.updateTrainStatus);
+router.patch('/:id/reserve', protect, ctrl.reserveTrain);
+router.patch('/:id/release', protect, ctrl.releaseReservation);
+
+router.use('/:id/updates', updateRoutes);
 
 module.exports = router;

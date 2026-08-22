@@ -26,8 +26,8 @@ class DuplicateActiveTrainError extends AppError {
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 
-/** Base where-clause that excludes soft-deleted records. */
-const notDeleted = { deletedAt: null };
+/** Base where-clause for active trains */
+const activeStatuses = ['AVAILABLE', 'IN_RESERVATION', 'ASSIGNED'];
 
 /** Wraps a Prisma call and re-maps P2002 to DuplicateActiveTrainError. */
 async function guardDuplicate(trainNumber, fn) {
@@ -41,33 +41,56 @@ async function guardDuplicate(trainNumber, fn) {
 
 // ─── CREATE ───────────────────────────────────────────────────────────────────
 
-/**
- * Publishes a new active train rescue request.
- *
- * Two-layer duplicate protection:
- *  1. Application-layer — query for existing active record before insert.
- *  2. DB-layer          — partial unique index catches concurrent race-conditions (P2002).
- */
 async function createTrain(data) {
-  const { trainNumber, movementType = 'standard', description, contactInfo, location } = data;
+  const { 
+    trainNumber, movementType, operatingPoint, stationId, stationName, region,
+    lat, lng, trainLength, totalWeight, numberOfWagons, customerReference,
+    requestType, locomotiveRequirement, existingLocomotive, traction,
+    destinationStation, destinationOperatingPoint, destLat, destLng,
+    requiredDeparture, requiredArrival, parkedFrom, expectedParkedUntil,
+    parkingTrack, afterArrivalAction, publishedById 
+  } = data;
 
-  // ── 1. App-layer duplicate check ─────────────────────────────────────────
+  // 1. App-layer duplicate check
   const existing = await prisma.train.findFirst({
-    where: { trainNumber, status: 'active', ...notDeleted },
+    where: { trainNumber: Number(trainNumber), status: { in: activeStatuses } },
   });
   if (existing) throw new DuplicateActiveTrainError(trainNumber);
 
-  // ── 2. Create record (DB index is the race-condition safety net) ──────────
+  // 2. Create record
   return guardDuplicate(trainNumber, () =>
     prisma.train.create({
       data: {
-        trainNumber,
+        trainNumber: Number(trainNumber),
         movementType,
-        description,
-        contactInfo,
-        location,
+        operatingPoint,
+        stationId,
+        stationName,
+        region,
+        lat,
+        lng,
+        trainLength,
+        totalWeight,
+        numberOfWagons,
+        customerReference,
+        requestType,
+        locomotiveRequirement,
+        existingLocomotive,
+        traction,
+        destinationStation,
+        destinationOperatingPoint,
+        destLat,
+        destLng,
+        requiredDeparture: requiredDeparture ? new Date(requiredDeparture) : null,
+        requiredArrival: requiredArrival ? new Date(requiredArrival) : null,
+        parkedFrom: new Date(parkedFrom),
+        expectedParkedUntil: new Date(expectedParkedUntil),
+        parkingTrack,
+        afterArrivalAction,
+        status: 'AVAILABLE',
+        publishedBy: { connect: { id: publishedById } },
         history: {
-          create: { fromStatus: null, toStatus: 'active', notes: 'Request published' },
+          create: { fromStatus: null, toStatus: 'AVAILABLE', notes: 'Request published' },
         },
       },
       include: { history: { orderBy: { changedAt: 'desc' } } },
@@ -77,49 +100,25 @@ async function createTrain(data) {
 
 // ─── READ — LIST ──────────────────────────────────────────────────────────────
 
-/**
- * Returns a paginated, filterable list of train requests.
- *
- * Supported query params:
- *  status, movementType, trainNumber, location (partial match),
- *  search (searches description + location + contactInfo),
- *  dateFrom, dateTo, page, limit
- */
 async function getAllTrains(filters = {}) {
   const {
-    status,
-    movementType,
-    trainNumber,
-    location,
-    search,
     dateFrom,
     dateTo,
+    region,
+    requestType,
     page = 1,
     limit = 20,
   } = filters;
 
-  const where = { ...notDeleted };
+  const where = { status: { not: 'CANCELLED' } };
 
-  if (status)       where.status = status;
-  if (movementType) where.movementType = movementType;
-  if (trainNumber)  where.trainNumber = Number(trainNumber);
-
-  if (location) {
-    where.location = { contains: location, mode: 'insensitive' };
-  }
-
-  if (search) {
-    where.OR = [
-      { description: { contains: search, mode: 'insensitive' } },
-      { location:    { contains: search, mode: 'insensitive' } },
-      { contactInfo: { contains: search, mode: 'insensitive' } },
-    ];
-  }
-
+  if (region && region !== 'ALL') where.region = region;
+  if (requestType && requestType !== 'ALL') where.requestType = requestType;
+  
   if (dateFrom || dateTo) {
-    where.createdAt = {};
-    if (dateFrom) where.createdAt.gte = new Date(dateFrom);
-    if (dateTo)   where.createdAt.lte = new Date(dateTo);
+    where.parkedFrom = {};
+    if (dateFrom) where.parkedFrom.gte = new Date(dateFrom);
+    if (dateTo) where.parkedFrom.lte = new Date(dateTo);
   }
 
   const pageNum  = Math.max(1, parseInt(page));
@@ -132,12 +131,15 @@ async function getAllTrains(filters = {}) {
       orderBy: { createdAt: 'desc' },
       skip,
       take: pageSize,
+      include: {
+        _count: { select: { bids: true } }
+      }
     }),
     prisma.train.count({ where }),
   ]);
 
   return {
-    data: trains,
+    data: trains.map(t => ({ ...t, bidsCount: t._count.bids })),
     pagination: {
       total,
       page: pageNum,
@@ -149,154 +151,84 @@ async function getAllTrains(filters = {}) {
   };
 }
 
-/**
- * Returns all active (non-deleted) train requests, newest first.
- */
-async function getActiveTrains() {
-  const trains = await prisma.train.findMany({
-    where: { status: 'active', ...notDeleted },
-    orderBy: { createdAt: 'desc' },
-  });
-  return trains;
-}
-
-/**
- * Returns a single train request by its ID.
- * Throws 404 if not found or soft-deleted.
- */
 async function getTrainById(id) {
-  const train = await prisma.train.findFirst({
-    where: { id, ...notDeleted },
-    include: { history: { orderBy: { changedAt: 'desc' } } },
+  const train = await prisma.train.findUnique({
+    where: { id },
+    include: { 
+      history: { orderBy: { changedAt: 'desc' } },
+      bids: { include: { bidder: { select: { name: true, companyName: true, evuCode: true } } } },
+      updates: { orderBy: { createdAt: 'desc' } }
+    },
   });
   if (!train) throw new AppError('Train request not found', 404);
   return train;
 }
 
-/**
- * Returns the full status-change audit history for a train request.
- */
-async function getTrainHistory(id) {
-  // Ensure the train exists first
-  const train = await prisma.train.findFirst({
-    where: { id, ...notDeleted },
-    select: { id: true, trainNumber: true },
-  });
+// ─── LOCKING ──────────────────────────────────────────────────────────────────
+
+async function reserveTrain(id, userId) {
+  const train = await prisma.train.findUnique({ where: { id } });
   if (!train) throw new AppError('Train request not found', 404);
-
-  const history = await prisma.trainHistory.findMany({
-    where: { trainId: id },
-    orderBy: { changedAt: 'desc' },
-  });
-  return { train, history };
-}
-
-/**
- * Returns aggregated statistics across all train requests.
- */
-async function getTrainStats() {
-  const [total, active, completed, cancelled, byMovementType] = await Promise.all([
-    prisma.train.count({ where: { ...notDeleted } }),
-    prisma.train.count({ where: { status: 'active',    ...notDeleted } }),
-    prisma.train.count({ where: { status: 'completed', ...notDeleted } }),
-    prisma.train.count({ where: { status: 'cancelled', ...notDeleted } }),
-    prisma.train.groupBy({
-      by: ['movementType'],
-      where: { ...notDeleted },
-      _count: { movementType: true },
-    }),
-  ]);
-
-  return {
-    total,
-    byStatus: { active, completed, cancelled },
-    byMovementType: byMovementType.reduce((acc, row) => {
-      acc[row.movementType] = row._count.movementType;
-      return acc;
-    }, {}),
-  };
-}
-
-// ─── UPDATE ───────────────────────────────────────────────────────────────────
-
-/**
- * Edits the details of an active train request.
- * Only description, contactInfo, location, and movementType can be edited.
- * trainNumber cannot be changed after publishing.
- */
-async function updateTrainDetails(id, data) {
-  const train = await prisma.train.findFirst({ where: { id, ...notDeleted } });
-  if (!train) throw new AppError('Train request not found', 404);
-
-  if (train.status !== 'active') {
-    throw new AppError(
-      `Cannot edit a request that is already "${train.status}". Only active requests can be modified.`,
-      400
-    );
+  
+  if (train.status !== 'AVAILABLE') {
+    throw new AppError('Train is not available for reservation', 400);
   }
 
-  const { movementType, description, contactInfo, location } = data;
-
-  return prisma.train.update({
-    where: { id },
-    data: { movementType, description, contactInfo, location },
-    include: { history: { orderBy: { changedAt: 'desc' } } },
-  });
-}
-
-/**
- * Updates the status of a train request (complete or cancel it).
- * Records an audit entry in TrainHistory.
- * Frees the trainNumber for future active requests once resolved.
- */
-async function updateTrainStatus(id, newStatus, notes) {
-  const train = await prisma.train.findFirst({ where: { id, ...notDeleted } });
-  if (!train) throw new AppError('Train request not found', 404);
-
-  if (train.status !== 'active') {
-    throw new AppError(
-      `Cannot change status of a request that is already "${train.status}".`,
-      400
-    );
+  const now = new Date();
+  if (train.lockedUntil && train.lockedUntil > now && train.lockedByUserId !== userId) {
+    throw new AppError('Train is currently locked by another company', 409);
   }
 
-  // Use a transaction to atomically update the train and insert the history entry
-  const [updated] = await prisma.$transaction([
-    prisma.train.update({
-      where: { id },
-      data: {
-        status:     newStatus,
-        resolvedAt: new Date(),
-      },
-      include: { history: { orderBy: { changedAt: 'desc' } } },
-    }),
-    prisma.trainHistory.create({
-      data: {
-        trainId:    id,
-        fromStatus: train.status,
-        toStatus:   newStatus,
-        notes:      notes || null,
-      },
-    }),
-  ]);
+  const lockUntil = new Date(now.getTime() + 10 * 60000); // 10 minutes from now
 
-  return updated;
+  const updatedTrain = await prisma.train.update({
+    where: { id },
+    data: {
+      lockedUntil: lockUntil,
+      lockedByUserId: userId,
+      status: 'IN_RESERVATION',
+    },
+  });
+  
+  await prisma.trainHistory.create({
+    data: {
+      trainId: id,
+      fromStatus: 'AVAILABLE',
+      toStatus: 'IN_RESERVATION',
+      notes: 'Train reserved for bidding'
+    }
+  });
+  
+  return updatedTrain;
 }
 
-// ─── DELETE ───────────────────────────────────────────────────────────────────
-
-/**
- * Soft-deletes a train request (sets deletedAt timestamp).
- * The record is retained in the DB for audit purposes but hidden from queries.
- */
-async function deleteTrain(id) {
-  const train = await prisma.train.findFirst({ where: { id, ...notDeleted } });
+async function releaseReservation(id, userId) {
+  const train = await prisma.train.findUnique({ where: { id } });
   if (!train) throw new AppError('Train request not found', 404);
+  
+  if (train.lockedByUserId !== userId) {
+    throw new AppError('You do not own this reservation', 403);
+  }
 
-  return prisma.train.update({
+  const updatedTrain = await prisma.train.update({
     where: { id },
-    data: { deletedAt: new Date() },
+    data: {
+      lockedUntil: null,
+      lockedByUserId: null,
+      status: 'AVAILABLE',
+    },
   });
+  
+  await prisma.trainHistory.create({
+    data: {
+      trainId: id,
+      fromStatus: 'IN_RESERVATION',
+      toStatus: 'AVAILABLE',
+      notes: 'Reservation released'
+    }
+  });
+  
+  return updatedTrain;
 }
 
 // ─── EXPORTS ─────────────────────────────────────────────────────────────────
@@ -304,13 +236,9 @@ async function deleteTrain(id) {
 module.exports = {
   createTrain,
   getAllTrains,
-  getActiveTrains,
   getTrainById,
-  getTrainHistory,
-  getTrainStats,
-  updateTrainDetails,
-  updateTrainStatus,
-  deleteTrain,
+  reserveTrain,
+  releaseReservation,
   AppError,
   DuplicateActiveTrainError,
 };

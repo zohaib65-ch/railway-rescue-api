@@ -12,231 +12,206 @@ datasource db {
 
 // ─── ENUMS ────────────────────────────────────────────────────────────────────
 
-enum MovementType {
-  standard
-  LZ
-  other
-}
-
-enum TrainStatus {
-  active
-  completed
-  cancelled
-}
-
-/// Platform roles — determines what each user is allowed to do.
-///
-///  customer    → self-registers; can publish and view their own train requests
-///  coordinator → created by admin; can manage all trains and dispatch teams
-///  admin       → full platform access including user management
 enum Role {
   customer
-  coordinator
   admin
+}
+
+enum TrainRequestStatus {
+  AVAILABLE
+  IN_RESERVATION
+  ASSIGNED
+  DEPARTED
+  COMPLETED
+  CANCELLED
+}
+
+enum RequestType {
+  LOCOMOTIVE_AND_PERSONNEL
+  PERSONNEL_ONLY
+  LOCOMOTIVE_ONLY
+}
+
+enum LocomotiveRequirement {
+  ELECTRIC
+  DIESEL_VLOK
+  DUAL_MODE
+  ANY_SUITABLE
+}
+
+enum TractionType {
+  AC_15KV
+  AC_25KV
+  DC_3KV
+  DC_1_5KV
+  DIESEL
+}
+
+enum Region {
+  NORD
+  SUED
+  WEST
+  OST
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  EXPIRED
 }
 
 // ─── MODELS ───────────────────────────────────────────────────────────────────
 
-/// Platform user account.
 model User {
   id               String    @id @default(cuid())
-
-  /// Full display name.
   name             String    @db.VarChar(100)
-
-  /// Unique login email.
   email            String    @unique @db.VarChar(200)
-
-  /// Bcrypt hash of the user's password — never store plain text.
+  companyName      String?   @db.VarChar(150)
+  evuCode          String?   @db.VarChar(50)
   passwordHash     String
-
-  /// Role that controls what the user can access.
   role             Role      @default(customer)
-
-  /// Whether the account is active. Deactivated users cannot log in.
   isActive         Boolean   @default(true)
-
-  /// Bcrypt-hashed refresh token stored server-side for validation & revocation.
   refreshToken     String?
-
-  /// One-time token for password reset flow.
   resetToken       String?
-
-  /// Expiry timestamp for the reset token.
   resetTokenExpiry DateTime?
-
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  /// Train requests published by this user.
-  trains           Train[]
-
-  /// Notifications received by this user.
+  trains           Train[]   @relation("PublishedTrains")
+  lockedTrains     Train[]   @relation("TrainLock")
+  bids             Bid[]
   notifications    Notification[]
 
   @@index([email])
   @@index([role])
-  @@index([isActive])
 }
 
-/// A train rescue request published by an operator.
 model Train {
-  id           String       @id @default(cuid())
-
-  /// Numeric train number — max 6 digits (1–999,999).
-  /// Must be unique among all trains with status = active.
-  trainNumber  Int
-
-  /// Movement type of the train — kept separate from trainNumber per spec.
-  movementType MovementType @default(standard)
-
-  /// Lifecycle status of the rescue request.
-  status       TrainStatus  @default(active)
-
-  /// Free-text description of the rescue situation.
-  description  String?      @db.VarChar(1000)
-
-  /// Contact information of the operator publishing the request.
-  contactInfo  String?      @db.VarChar(200)
-
-  /// Location where the train is stranded or in need of rescue.
-  location     String?      @db.VarChar(300)
-
-  /// Timestamp when the request was resolved (completed or cancelled).
-  resolvedAt   DateTime?
-
-  /// Soft-delete timestamp. When set, the record is hidden from normal queries.
-  deletedAt    DateTime?
-
-  /// The user who published this request (null if created before auth was added).
-  publishedById String?
-  publishedBy   User?        @relation(fields: [publishedById], references: [id], onDelete: SetNull)
-
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
-
-  /// Audit trail of all status changes on this request.
-  history      TrainHistory[]
-
-  /// Assignments of rescue teams to this train.
-  assignments  Assignment[]
+  id                        String                @id @default(cuid())
+  trainNumber               Int
+  movementType              String?               @db.VarChar(50)
+  
+  // Location
+  operatingPoint            String                @db.VarChar(50)
+  stationId                 String?               @db.VarChar(50)
+  stationName               String                @db.VarChar(200)
+  region                    Region
+  lat                       Float?
+  lng                       Float?
+  
+  // Specs
+  trainLength               Float?
+  totalWeight               Float?
+  numberOfWagons            Int?
+  
+  customerReference         String                @db.VarChar(100)
+  
+  // Requirements
+  requestType               RequestType
+  locomotiveRequirement     LocomotiveRequirement?
+  existingLocomotive        String?               @db.VarChar(100)
+  traction                  TractionType?
+  
+  // Destination
+  destinationStation        String?               @db.VarChar(200)
+  destinationOperatingPoint String?               @db.VarChar(50)
+  destLat                   Float?
+  destLng                   Float?
+  
+  // Scheduling
+  requiredDeparture         DateTime?
+  requiredArrival           DateTime?
+  parkedFrom                DateTime
+  expectedParkedUntil       DateTime
+  actualDepartureTime       DateTime?
+  
+  parkingTrack              String?               @db.VarChar(100)
+  afterArrivalAction        String?               @db.VarChar(500)
+  
+  status                    TrainRequestStatus    @default(AVAILABLE)
+  
+  // Locking
+  lockedUntil               DateTime?
+  lockedByUserId            String?
+  lockedByUser              User?                 @relation("TrainLock", fields: [lockedByUserId], references: [id])
+  
+  // Publisher
+  publishedById             String
+  publishedBy               User                  @relation("PublishedTrains", fields: [publishedById], references: [id])
+  
+  createdAt                 DateTime              @default(now())
+  updatedAt                 DateTime              @updatedAt
+  
+  history                   TrainHistory[]
+  bids                      Bid[]
+  updates                   OperationalUpdate[]
 
   @@index([status])
   @@index([trainNumber])
-  @@index([createdAt(sort: Desc)])
-  @@index([deletedAt])
   @@index([publishedById])
 }
 
-/// Immutable audit log entry recording a status change on a Train request.
-model TrainHistory {
-  id         String   @id @default(cuid())
-
-  trainId    String
-  train      Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
-
-  /// The status before the change (null when first created).
-  fromStatus String?
-
-  /// The status after the change.
-  toStatus   String
-
-  /// Optional notes recorded at the time of the change.
-  notes      String?  @db.VarChar(500)
-
-  changedAt  DateTime @default(now())
-}
-
-// ─── RESCUE TEAMS ─────────────────────────────────────────────────────────────
-
-/// A rescue team that can be dispatched to stranded trains.
-model RescueTeam {
-  id           String   @id @default(cuid())
-
-  /// Name of the rescue team (e.g., "Stuttgart Heavy Rescue Alpha").
-  name         String   @unique @db.VarChar(100)
-
-  /// Current base location of the team.
-  location     String   @db.VarChar(300)
-
-  /// Is the team currently available for dispatch?
-  isAvailable  Boolean  @default(true)
-
-  /// Number of members or personnel capacity.
-  capacity     Int?
-
-  /// Specialized equipment or capabilities (e.g., "Heavy Towing", "Cranes").
-  specialties  String?  @db.VarChar(500)
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  /// Assignments this team is involved in.
-  assignments  Assignment[]
-
-  @@index([isAvailable])
-}
-
-// ─── ASSIGNMENTS ──────────────────────────────────────────────────────────────
-
-enum AssignmentStatus {
-  assigned
-  en_route
-  on_site
-  resolved
-  cancelled
-}
-
-/// Represents the dispatch of a rescue team to a stranded train.
-model Assignment {
-  id             String           @id @default(cuid())
-
-  /// The stranded train being rescued.
-  trainId        String
-  train          Train            @relation(fields: [trainId], references: [id], onDelete: Cascade)
-
-  /// The rescue team dispatched.
-  rescueTeamId   String
-  rescueTeam     RescueTeam       @relation(fields: [rescueTeamId], references: [id], onDelete: Cascade)
-
-  /// Current status of this dispatch assignment.
-  status         AssignmentStatus @default(assigned)
-
-  /// Optional notes from the coordinator or rescue team.
-  notes          String?          @db.VarChar(1000)
-
-  assignedAt     DateTime         @default(now())
-  updatedAt      DateTime         @updatedAt
+model Bid {
+  id                String    @id @default(cuid())
+  trainId           String
+  train             Train     @relation(fields: [trainId], references: [id], onDelete: Cascade)
+  
+  bidderId          String
+  bidder            User      @relation(fields: [bidderId], references: [id], onDelete: Cascade)
+  
+  priceOffer        Float
+  locomotiveDetails String?   @db.VarChar(500)
+  driverEta         String?   @db.VarChar(100)
+  comments          String?   @db.VarChar(1000)
+  
+  status            BidStatus @default(PENDING)
+  
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   @@index([trainId])
-  @@index([rescueTeamId])
+  @@index([bidderId])
   @@index([status])
 }
 
-// ─── NOTIFICATIONS ────────────────────────────────────────────────────────────
+model OperationalUpdate {
+  id         String   @id @default(cuid())
+  trainId    String
+  train      Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
+  
+  message    String   @db.VarChar(1000)
+  authorId   String
+  
+  createdAt  DateTime @default(now())
+  
+  @@index([trainId])
+}
 
-/// In-app notifications for users regarding their train requests or assignments.
+model TrainHistory {
+  id         String   @id @default(cuid())
+  trainId    String
+  train      Train    @relation(fields: [trainId], references: [id], onDelete: Cascade)
+  
+  fromStatus String?
+  toStatus   String
+  notes      String?  @db.VarChar(500)
+  
+  changedAt  DateTime @default(now())
+}
+
 model Notification {
   id         String   @id @default(cuid())
-
-  /// User who will receive the notification.
   userId     String
   user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  /// Title of the notification.
+  
   title      String   @db.VarChar(100)
-
-  /// Detailed message body.
   message    String   @db.VarChar(500)
-
-  /// Has the user read this notification?
   isRead     Boolean  @default(false)
-
-  /// Optional link to the relevant resource (e.g., "/trains/123").
   link       String?  @db.VarChar(200)
-
+  
   createdAt  DateTime @default(now())
-
+  
   @@index([userId])
   @@index([isRead])
 }
